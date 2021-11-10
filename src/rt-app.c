@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/syscall.h>
 
 #include "config.h"
 #include "rt-app_utils.h"
@@ -467,9 +468,9 @@ static int run_event(event_data_t *event, int dry_run,
 			struct timespec t_start, t_end;
 			log_debug("run %d ", event->duration);
 			ldata->c_duration += event->duration;
-			clock_gettime(CLOCK_MONOTONIC, &t_start);
+			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t_start);
 			*perf += loadwait(event->duration);
-			clock_gettime(CLOCK_MONOTONIC, &t_end);
+			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t_end);
 			t_end = timespec_sub(&t_end, &t_start);
 			ldata->duration += timespec_to_usec(&t_end);
 		}
@@ -627,6 +628,29 @@ static int run_event(event_data_t *event, int dry_run,
 	return lock;
 }
 
+int get_cpu(int *cpu)
+{
+	return syscall(SYS_getcpu, &cpu, NULL, NULL);
+}
+
+int get_cpu_frequency(int cpu,
+	unsigned long *frequency)
+{
+	char filename[256];
+	snprintf(filename, sizeof(filename),
+		"/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", cpu);
+
+	FILE *file = fopen(filename, "r");
+	if (!file)
+		return 1;
+
+	int nread = fscanf(file, "%lu", frequency);
+	fclose(file);
+	if (nread > 0)
+		return 0;
+	return 1;
+}
+
 int run(thread_data_t *tdata,
 	phase_data_t *pdata,
 	struct timespec *t_first,
@@ -637,6 +661,17 @@ int run(thread_data_t *tdata,
 	int nbevents = pdata->nbevents;
 	int i, lock = 0;
 	unsigned long perf = 0;
+
+	// Note: this information is valid only at the time of this read, the
+	// program might change CPU inside the a cpuset
+	if (get_cpu(&ldata->cpu) != 0) {
+		ldata->cpu = 0;
+	}
+
+	// Same for the frequency, it may change over time if not fixed
+	if (get_cpu_frequency(ldata->cpu, &ldata->freq) != 0 ) {
+		ldata->freq = 0;
+	}
 
 	for (i = 0; i < nbevents; i++)
 	{
@@ -1191,22 +1226,13 @@ void *thread_body(void *arg)
 	log_notice("[%d] starting thread ...\n", data->ind);
 
 	if (opts.logsize)
-		fprintf(data->log_handler, "%s %8s %8s %8s %15s %15s %15s %10s %10s %10s %10s\n",
+		fprintf(data->log_handler, "%s %8s %8s %8s %15s %15s %15s %10s %10s %10s %10s %5s \n",
 				   "#idx", "perf", "run", "period",
 				   "start", "end", "rel_st", "slack",
-				   "c_duration", "c_period", "wu_lat");
+				   "c_duration", "c_period", "wu_lat", "cpu");
 
 	log_ftrace(ft_data.marker_fd, FTRACE_TASK,
 		   "rtapp_task: event=start");
-
-	if (data->delay > 0) {
-		struct timespec delay = usec_to_timespec(data->delay);
-
-		log_debug("initial delay %lu ", data->delay);
-		t_first = timespec_add(&t_first, &delay);
-		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t_first,
-				NULL);
-	}
 
 	/* TODO find a better way to handle that constraint:
 	 * Set the task to SCHED_DEADLINE as far as possible touching its
@@ -1231,18 +1257,30 @@ void *thread_body(void *arg)
 	 */
 	phase = phase_loop = thread_loop = log_idx = 0;
 
+	// Moved after the thread parameters are all set
+	if (data->delay > 0) {
+		struct timespec delay = usec_to_timespec(data->delay);
+		log_debug("initial delay %lu ", data->delay);
+		t_first = timespec_add(&t_first, &delay);
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t_first,
+				NULL);
+	}
+
 	/* The following is executed for each phase. */
 	while (continue_running && thread_loop != data->loop) {
 		struct timespec t_diff, t_rel_start;
 
+		/*
+		// Removed by Walter
 		set_thread_affinity(data, &pdata->cpu_data);
 		set_thread_param(data, pdata->sched_data);
 		set_thread_membind(data, &pdata->numa_data);
 		set_thread_taskgroup(data, pdata->taskgroup_data);
+		*/
 
 		log_ftrace(ft_data.marker_fd, FTRACE_LOOP,
-			   "rtapp_loop: event=start thread_loop=%d phase=%d phase_loop=%d",
-			   thread_loop, phase, phase_loop);
+			   "rtapp_loop: event=start thread_loop=%d phase=%d phase_loop=%d thread_id=%d",
+			   thread_loop, phase, phase_loop, data->ind);
 
 		log_debug("[%d] begins thread_loop %d phase %d phase_loop %d",
 			  data->ind, thread_loop, phase, phase_loop);
@@ -1271,6 +1309,8 @@ void *thread_body(void *arg)
 		curr_timing->slack = ldata.slack;
 		curr_timing->c_period = ldata.c_period;
 		curr_timing->c_duration = ldata.c_duration;
+		curr_timing->cpu = ldata.cpu;
+		curr_timing->freq = ldata.freq;
 
 		if (opts.logsize && !timings && continue_running)
 			log_timing(data->log_handler, curr_timing);

@@ -261,7 +261,9 @@ typedef struct _log_data_t {
 	unsigned long wu_latency;
 	unsigned long c_duration;
 	unsigned long c_period;
+	unsigned long freq;
 	long slack;
+	int cpu;
 } log_data_t;
 
 typedef struct _rtapp_options_t {
@@ -293,6 +295,8 @@ typedef struct _rtapp_options_t {
 
 typedef struct _timing_point_t {
 	int ind;
+	int cpu;
+	unsigned long freq;
 	unsigned long perf;
 	unsigned long duration;
 	unsigned long period;
