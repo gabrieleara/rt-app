@@ -35,3 +35,4 @@ src/*.txt
 src/*.swp
 src/stamp-h1
 
+src/config.h.in~
