@@ -995,7 +995,7 @@ static void __set_thread_nice(thread_data_t *data, sched_data_t *sched_data)
 	ret = setpriority(PRIO_PROCESS, 0, sched_data->prio);
 	if (ret) {
 		log_critical("[%d] setpriority returned %d", data->ind, ret);
-		errno = ret;
+		// errno = ret;
 		perror("setpriority");
 		exit(EXIT_FAILURE);
 	}
@@ -1067,7 +1067,7 @@ static void _set_thread_deadline(thread_data_t *data, sched_data_t *sched_data)
 	if (ret) {
 		log_critical("[%d] sched_setattr returned %d",
 			     data->ind, ret);
-		errno = ret;
+		// errno = ret;
 		perror("sched_setattr: failed to set deadline attributes");
 		exit(EXIT_FAILURE);
 	}
@@ -1113,7 +1113,7 @@ static void _set_thread_uclamp(thread_data_t *data, sched_data_t *sched_data)
 	if (ret) {
 		log_critical("[%d] sched_setattr returned %d",
 			     data->ind, ret);
-		errno = ret;
+		// errno = ret;
 		perror("sched_setattr: failed to set uclamp value(s)");
 		exit(EXIT_FAILURE);
 	}
