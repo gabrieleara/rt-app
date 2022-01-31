@@ -630,7 +630,7 @@ static int run_event(event_data_t *event, int dry_run,
 
 int get_cpu(int *cpu)
 {
-	return syscall(SYS_getcpu, &cpu, NULL, NULL);
+	return syscall(SYS_getcpu, cpu, NULL, NULL);
 }
 
 int get_cpu_frequency(int cpu,
@@ -638,7 +638,7 @@ int get_cpu_frequency(int cpu,
 {
 	char filename[256];
 	snprintf(filename, sizeof(filename),
-		"/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", cpu);
+		"/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", cpu);
 
 	FILE *file = fopen(filename, "r");
 	if (!file)
