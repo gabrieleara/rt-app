@@ -1226,10 +1226,10 @@ void *thread_body(void *arg)
 	log_notice("[%d] starting thread ...\n", data->ind);
 
 	if (opts.logsize)
-		fprintf(data->log_handler, "%s %8s %8s %8s %15s %15s %15s %10s %10s %10s %10s %5s \n",
+		fprintf(data->log_handler, "%s %8s %8s %8s %15s %15s %15s %10s %10s %10s %10s %5s %10s %10s %10s %10s\n",
 				   "#idx", "perf", "run", "period",
 				   "start", "end", "rel_st", "slack",
-				   "c_duration", "c_period", "wu_lat", "cpu");
+				   "c_duration", "c_period", "wu_lat", "cpu", "freq", "dl_runtime", "dl_period", "dl_deadline");
 
 	log_ftrace(ft_data.marker_fd, FTRACE_TASK,
 		   "rtapp_task: event=start");
@@ -1309,6 +1309,10 @@ void *thread_body(void *arg)
 		curr_timing->slack = ldata.slack;
 		curr_timing->c_period = ldata.c_period;
 		curr_timing->c_duration = ldata.c_duration;
+		curr_timing->dl_runtime = data->sched_data->runtime;
+		curr_timing->dl_period = data->sched_data->period;
+		curr_timing->dl_deadline = data->sched_data->deadline;
+
 		curr_timing->cpu = ldata.cpu;
 		curr_timing->freq = ldata.freq;
 

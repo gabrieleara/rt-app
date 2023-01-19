@@ -307,6 +307,10 @@ typedef struct _timing_point_t {
 	__u64 start_time;
 	__u64 end_time;
 	__u64 rel_start_time;
+
+	unsigned long dl_runtime;
+	unsigned long dl_period;
+	unsigned long dl_deadline;
 } timing_point_t;
 
 #endif // _RTAPP_TYPES_H_
