@@ -12,6 +12,6 @@ echo performance > /sys/devices/system/cpu/cpu$1/cpufreq/scaling_governor
 sleep 1
 
 sed 's/"calibration" : "CPU.*",/"calibration" : "CPU'$1'",/' -i calibration.json
-pLoad=$(rt-app calibration.json 2>&1 |grep pLoad |sed 's/.*= \(.*\)ns.*/\1/')
+pLoad=$(taskset -c $1 chrt -f 99 rt-app calibration.json 2>&1 | grep pLoad | sed 's/.*= \(.*\)ns.*/\1/')
 sed 's/"calibration" : .*,/"calibration" : '$pLoad',/' -i dvfs.json
 echo CPU$1\'s pLoad is $pLoad
