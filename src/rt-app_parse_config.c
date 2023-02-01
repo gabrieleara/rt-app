@@ -1211,6 +1211,7 @@ parse_global(struct json_object *global, rtapp_options_t *opts)
 	}
 
 	opts->duration = get_int_value_from(global, "duration", TRUE, -1);
+	opts->duration = timeout > 0 ? timeout : opts->duration; // Override from command line
 	opts->gnuplot = get_bool_value_from(global, "gnuplot", TRUE, 0);
 	policy = get_string_value_from(global, "default_policy",
 				       TRUE, "SCHED_OTHER");

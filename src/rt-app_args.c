@@ -29,12 +29,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "rt-app_utils.h"
 
 char help_usage[] = \
-"Usage: rt-app [-l <debug_level>] <taskset.json>\n"
+"Usage: rt-app [-t <timeout>] [-l <debug_level>] <taskset.json>\n"
 "Try 'rt-app --help' for more information.\n";
 
 char help_full[] = \
 "Usage:\n"
-"      rt-app [-l <debug_level>] <taskset.json>\n"
+"      rt-app [-t <timeout>] [-l <debug_level>] <taskset.json>\n"
 "      cat taskset.json | rt-app -\n\n"
 "taskset.json is a json file describing the workload that will be generated"
 "by rt-app.\n\n"
@@ -44,7 +44,14 @@ char help_full[] = \
 "Miscellaneous:\n"
 "  -v, --version      display version information and exit\n"
 "  -l, --log          set verbosity level (10: ERROR/CRITICAL, 50: NOTICE (default)\n"
-"                                    75: INFO, 100: DEBUG)\n"
+"                     75: INFO, 100: DEBUG)\n"
+"\n"
+"  -t, --timeout      set the timeout in seconds;\n"
+"                     0 or a negative number means no timeout (default)\n"
+"                     if positive, this option overrides the value of the\n"
+"                     'duration' attribute supplied in the JSON configuration,\n"
+"                     otherwise the value in the configuration is used\n"
+"\n"
 "  -h, --help         display this help text and exit\n";
 
 void
@@ -61,6 +68,7 @@ struct option long_args[] = {
 	{"help",	no_argument,		0,	'h'},
 	{"version",	no_argument,		0,	'v'},
 	{"log",		required_argument,	0,	'l'},
+	{"timeout",	required_argument,	0,	't'},
 	{0,		0,			0,	0}
 };
 
@@ -71,7 +79,7 @@ parse_command_line(int argc, char **argv, rtapp_options_t *opts)
 	int c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hvl:", long_args, 0);
+		c = getopt_long(argc, argv, "hvl:t:", long_args, 0);
 		if (c == -1)
 			break;
 
@@ -86,6 +94,19 @@ parse_command_line(int argc, char **argv, rtapp_options_t *opts)
 			       VERSION,
 			       BUILD_DATE);
 			exit(0);
+			break;
+		case 't':
+			if (!optarg) {
+				usage(NULL, EXIT_INV_COMMANDLINE);
+			} else {
+				char *endptr;
+				long int ll = strtol(optarg, &endptr, 10);
+				if (*endptr) {
+					usage(NULL, EXIT_INV_COMMANDLINE);
+					break;
+				}
+				timeout = ll;
+			}
 			break;
 		case 'l':
 			if (!optarg) {

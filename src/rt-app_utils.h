@@ -41,6 +41,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define BUF_SIZE 100
 
 extern int log_level;
+extern int timeout;
 extern int ftrace_level;
 
 /* This prepends a string to a message */
