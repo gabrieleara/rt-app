@@ -1207,6 +1207,12 @@ void *thread_body(void *arg)
 		}
 	}
 
+	if (!data->forked) {
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=before barrier1");
+		pthread_barrier_wait(&threads_barrier);
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=after  barrier1");
+	}
+
 	if (data->ind == 0) {
 		/*
 		 * Only first thread sets t_zero. Other threads sync with this
@@ -1218,8 +1224,11 @@ void *thread_body(void *arg)
 			   timespec_to_usec_ull(&t_zero));
 	}
 
-	if (!data->forked)
+	if (!data->forked) {
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=before barrier2");
 		pthread_barrier_wait(&threads_barrier);
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=after  barrier2");
+	}
 
 	t_first = t_zero;
 
@@ -1259,11 +1268,13 @@ void *thread_body(void *arg)
 
 	// Moved after the thread parameters are all set
 	if (data->delay > 0) {
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=delay");
 		struct timespec delay = usec_to_timespec(data->delay);
 		log_debug("initial delay %lu ", data->delay);
 		t_first = timespec_add(&t_first, &delay);
 		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t_first,
 				NULL);
+		log_ftrace(ft_data.marker_fd, FTRACE_TASK, "rtapp_task: event=after delay");
 	}
 
 	/* The following is executed for each phase. */
